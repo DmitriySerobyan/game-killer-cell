@@ -64,7 +64,7 @@
         this.searcher = new WorldSearcher(this.objects)
       }
       mapWorldPosToCanvasCoordinate(pos, canvasWidth, canvasHeight) {
-        return new CanvasCoordinate(pos.x, pos.y)
+        return new CanvasCoordinate(pos.x, canvasHeight - pos.y)
       }
       draw(ctx, canvasWidth, canvasHeight) {
         this.clear(ctx, canvasWidth, canvasHeight)
@@ -125,18 +125,21 @@
       move(world) {
         const closestFood = this.findClosestFood(world)
         const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
-        this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood, [1, 0])
-        this.pos.y = this.pos.y + this.moveDistance * -this.sin(vectorToClosestFood, [1, 0])
+        this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood)
+        this.pos.y = this.pos.y + this.moveDistance * this.sin(vectorToClosestFood)
       }
-      cos(vector1, vector2) {
-        const ax = vector1[0]
-        const ay = vector1[1]
-        const bx = vector2[0]
-        const by = vector2[1]
+      cos(vector) {
+        const ax = vector[0]
+        const ay = vector[1]
+        const bx = 1
+        const by = 0
         return (ax * bx + ay * by) / (Math.sqrt(ax ** 2 + ay ** 2) * Math.sqrt(bx ** 2 + by ** 2))
       }
-      sin(vector1, vector2) {
-        const cos = this.cos(vector1, vector2)
+      sin(vector) {
+        const cos = this.cos(vector)
+        if (vector[1] < 0) {
+          return -Math.sqrt(1 - cos ** 2)
+        }
         return Math.sqrt(1 - cos ** 2)
       }
     }
