@@ -127,14 +127,17 @@
       update(worldEvents) {
         this.searcher = new WorldSearcher(this)
         this.objects.forEach(object => {
-          object.update(this)
+          object.move(this)
         })
         for (let i = 0; i < this.objects.length; i++) {
           const object = this.objects[i]
           if (object && object instanceof Cell) {
             const cell = object
-            var eatenCells = this.searcher.findAllAtDistance(object.pos, 5, (it) => cell.canEat(it))
-            this.objects = this.objects.filter(it => !eatenCells.includes(it))
+            var objectsCanEat = this.searcher.findAllAtDistance(object.pos, 5, (it) => cell.canEat(it))
+            for (let objectCanEat of objectsCanEat) {
+              cell.eat(objectCanEat)
+            }
+            this.objects = this.objects.filter(it => it.isAlive)
           }
         }
         for (let event of worldEvents) {
@@ -162,15 +165,16 @@
     }
 
     class WorldObject {
-      constructor(pos) {
+      constructor(pos, isAlive = true) {
         this.pos = pos
+        this.isAlive = isAlive
       }
-      update(world) {
+      move(world) {
       }
     }
 
     class Food extends WorldObject {
-      update(world) {
+      move(world) {
       }
     }
 
@@ -184,11 +188,11 @@
     }
 
     class Cell extends WorldObject {
-      constructor(pos, moveDistance = 5) {
+      constructor(pos, moveDistance = 5, satiety = 1) {
         super(pos)
         this.moveDistance = moveDistance
       }
-      update(world) {
+      move(world) {
         const closestFood = this.findClosestFood(world)?.object
         if (closestFood) {
           const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
@@ -209,6 +213,10 @@
           return -Math.sqrt(1 - cos ** 2)
         }
         return Math.sqrt(1 - cos ** 2)
+      }
+      eat(object) {
+        object.isAlive = false
+        return this.satiety += object.satiety
       }
     }
 
