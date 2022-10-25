@@ -66,12 +66,17 @@
         this.ctx = ctx
         this.canvasWidth = canvasWidth
         this.canvasHeight = canvasHeight
+        this.objectDrawers = {}
+        this.objectDrawers[Food.name] = new FoodDrawer()
+        this.objectDrawers[HerbivoreCell.name] = new HerbivoreCellDrawer()
+        this.objectDrawers[CarnivorousCell.name] = new CarnivorousCellDrawer()
       }
       draw(world) {
         this.clear()
         world.objects.forEach(object => {
           const canvasCoordinate = this.mapWorldPosToCanvasCoordinate(object.pos)
-          object.draw(this.ctx, canvasCoordinate)
+          const objectDrawer = this.objectDrawers[object.constructor.name]
+          objectDrawer.draw(object, this.ctx, canvasCoordinate)
         })
       }
       clear() {
@@ -80,6 +85,11 @@
       }
       mapWorldPosToCanvasCoordinate(pos) {
         return new CanvasCoordinate(pos.x, this.canvasHeight - pos.y)
+      }
+    }
+
+    class WorldObjectDrawer {
+      draw(object, ctx, coordinate) {
       }
     }
 
@@ -127,20 +137,21 @@
       constructor(pos) {
         this.pos = pos
       }
-      draw(ctx, canvasCoordinate) {
-      }
       update(world) {
       }
     }
 
     class Food extends WorldObject {
-      draw(ctx, canvasCoordinate) {
+      update(world) {
+      }
+    }
+
+    class FoodDrawer extends WorldObjectDrawer {
+      draw(object, ctx, coordinate) {
         ctx.beginPath()
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 5, 0, 2 * Math.PI, false)
+        ctx.arc(coordinate.x, coordinate.y, 5, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'yellow'
         ctx.fill()
-      }
-      update(world) {
       }
     }
 
@@ -177,14 +188,17 @@
       findClosestFood(world) {
         return world.searcher.findClosest(this.pos, object => object instanceof Food)
       }
-      draw(ctx, canvasCoordinate) {
-        ctx.beginPath()
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false)
-        ctx.fillStyle = 'green'
-        ctx.fill()
-      }
       canEat(object) {
         return object instanceof Food
+      }
+    }
+
+    class HerbivoreCellDrawer extends WorldObjectDrawer {
+      draw(object, ctx, coordinate) {
+        ctx.beginPath()
+        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
+        ctx.fillStyle = 'green'
+        ctx.fill()
       }
     }
 
@@ -192,14 +206,17 @@
       findClosestFood(world) {
         return world.searcher.findClosest(this.pos, object => object != this && object instanceof Cell)
       }
-      draw(ctx, canvasCoordinate) {
-        ctx.beginPath()
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false)
-        ctx.fillStyle = 'red'
-        ctx.fill()
-      }
       canEat(object) {
         return object != this && object instanceof Cell
+      }
+    }
+
+    class CarnivorousCellDrawer extends WorldObjectDrawer {
+      draw(object, ctx, coordinate) {
+        ctx.beginPath()
+        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
+        ctx.fillStyle = 'red'
+        ctx.fill()
       }
     }
 
