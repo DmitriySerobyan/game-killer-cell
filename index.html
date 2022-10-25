@@ -129,10 +129,10 @@
 
     class Food extends Object {
       draw(ctx, canvasCoordinate) {
-        ctx.beginPath();
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 5, 0, 2 * Math.PI, false);
-        ctx.fillStyle = '#fffa04';
-        ctx.fill();
+        ctx.beginPath()
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 5, 0, 2 * Math.PI, false)
+        ctx.fillStyle = 'yellow'
+        ctx.fill()
       }
       move(world) {
       }
@@ -175,10 +175,10 @@
         return world.searcher.findClosest(this.pos, object => object instanceof Food)
       }
       draw(ctx, canvasCoordinate) {
-        ctx.beginPath();
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false);
-        ctx.fillStyle = '#4bc000';
-        ctx.fill();
+        ctx.beginPath()
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false)
+        ctx.fillStyle = 'green'
+        ctx.fill()
       }
       canEat(object) {
         return object instanceof Food
@@ -190,10 +190,10 @@
         return world.searcher.findClosest(this.pos, object => object instanceof Cell)
       }
       draw(ctx, canvasCoordinate) {
-        ctx.beginPath();
-        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false);
-        ctx.fillStyle = '#ff8125';
-        ctx.fill();
+        ctx.beginPath()
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false)
+        ctx.fillStyle = 'red'
+        ctx.fill()
       }
       canEat(object) {
         return object != this && object instanceof Cell
