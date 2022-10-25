@@ -187,7 +187,7 @@
 
     class CarnivorousCell extends Cell {
       findClosestFood(world) {
-        return world.searcher.findClosest(this.pos, object => object instanceof Cell)
+        return world.searcher.findClosest(this.pos, object => object != this && object instanceof Cell)
       }
       draw(ctx, canvasCoordinate) {
         ctx.beginPath()
