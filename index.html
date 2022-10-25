@@ -25,11 +25,11 @@
   <script>
 
     class WorldSearcher {
-      constructor(objects) {
-        this.objects = objects
+      constructor(world) {
+        this.world = world
       }
       findClosest(pos, prefilter) {
-        return this.objects
+        return this.world.objects
           .filter(object => prefilter(object))
           .reduce(
             (closest, object) => {
@@ -52,7 +52,7 @@
           )
       }
       findAllAtDistance(pos, distance, prefilter) {
-        return this.objects
+        return this.world.objects
           .filter(object => prefilter(object))
           .filter(object => {
             const objectDistance = WorldPos.distanse(object.pos, pos)
@@ -86,6 +86,9 @@
       mapWorldPosToCanvasCoordinate(pos) {
         return new CanvasCoordinate(pos.x, this.canvasHeight - pos.y)
       }
+      canvasCoordinateToWorldPos(coordinate) {
+        return new WorldPos(coordinate.x, this.canvasHeight - coordinate.y)
+      }
     }
 
     class WorldObjectDrawer {
@@ -93,15 +96,36 @@
       }
     }
 
+    class WorldFoodSpawnEvent {
+      constructor(pos) {
+        this.pos = pos
+      }
+    }
+
+    class WorldSEventHandler {
+      constructor(world) {
+        this.world = world
+      }
+      handle(event) {
+      }
+    }
+
+    class WorldFoodSpawnEventHandler extends WorldSEventHandler {
+      handle(world, event) {
+        world.objects.push(new Food(event.pos))
+      }
+    }
+
     class World {
       constructor(width, height, objects) {
         this.objects = objects
-        this.searcher = new WorldSearcher(objects)
         this.width = width
         this.height = height
+        this.worldSpawnEventHandlers = {}
+        this.worldSpawnEventHandlers[WorldFoodSpawnEvent.name] = new WorldFoodSpawnEventHandler()
       }
-      update() {
-        this.searcher = new WorldSearcher(this.objects)
+      update(worldEvents) {
+        this.searcher = new WorldSearcher(this)
         this.objects.forEach(object => {
           object.update(this)
         })
@@ -112,6 +136,10 @@
             var eatenCells = this.searcher.findAllAtDistance(object.pos, 5, (it) => cell.canEat(it))
             this.objects = this.objects.filter(it => !eatenCells.includes(it))
           }
+        }
+        for (let event of worldEvents) {
+          const handler = this.worldSpawnEventHandlers[event.constructor.name]
+          handler.handle(this, event)
         }
       }
     }
@@ -224,7 +252,7 @@
       constructor(width, height) {
         this.numberOfCells = 50
         this.numberOfFood = 100
-        this.killerCellProbability = 0.5
+        this.killerCellProbability = 0.1
         this.width = width
         this.height = height
       }
@@ -246,6 +274,36 @@
       }
     }
 
+    class GameControlClickEvent {
+      constructor(canvasCoordinate) {
+        this.canvasCoordinate = canvasCoordinate
+      }
+    }
+
+    class GameControl {
+      constructor(canvas) {
+        this.canvas = canvas
+        this.event = []
+      }
+      getNewEvent() {
+        const result = this.event
+        this.event = []
+        return result
+      }
+      startListenClick() {
+        this.canvas.addEventListener('mousedown', e => {
+          const canvasCoordinate = this.getCanvasCoordinate(e)
+          this.event.push(new GameControlClickEvent(canvasCoordinate))
+        })
+      }
+      getCanvasCoordinate(event) {
+        const rect = this.canvas.getBoundingClientRect()
+        const x = event.clientX - rect.left
+        const y = event.clientY - rect.top
+        return new CanvasCoordinate(x, y)
+      }
+    }
+
     class Game {
       constructor() {
         this.updateInterval = 1000 / 60
@@ -260,15 +318,19 @@
           worldObjectGenerator.generate()
         )
         this.worldDrawer = new WorldDrawer(ctx, canvas.width, canvas.height)
+        this.gameControl = new GameControl(canvas)
       }
-
       start() {
         setInterval(() => {
-          this.world.update()
+          const gameControlEvents = this.gameControl.getNewEvent()
+          const worldEvents = gameControlEvents.map(it => {
+            return new WorldFoodSpawnEvent(this.worldDrawer.canvasCoordinateToWorldPos(it.canvasCoordinate))
+          })
+          this.world.update(worldEvents)
           this.worldDrawer.draw(this.world)
         }, this.updateInterval)
+        this.gameControl.startListenClick()
       }
-
     }
 
     const game = new Game()
