@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Game "Killer Cell"</title>
+</head>
+
+<body>
+  <canvas id="game"></canvas>
+
+  <style>
+    html {
+      overflow: hidden;
+    }
+
+    body {
+      margin: 0pt;
+    }
+  </style>
+
+  <script>
+
+    class WorldSearcher {
+      constructor(objects) {
+        this.objects = objects
+      }
+      findClosest(pos, filter) {
+        return this.objects
+          .filter(object => filter(object))
+          .reduce(
+            (closest, object) => {
+              if (closest == null) {
+                return object
+              }
+              const objectDistance = WorldPos.distanse(object.pos, pos)
+              if (objectDistance < closest.distance) {
+                return {
+                  'distance': objectDistance,
+                  'object': object
+                }
+              }
+              return closest;
+            },
+            null
+          )
+      }
+    }
+
+    class World {
+      constructor(width = 100, height = 100, objects) {
+        this.objects = objects
+        this.searcher = new WorldSearcher(objects)
+        this.width = width
+        this.height = height
+      }
+      update() {
+        this.objects.forEach(object => {
+          object.move(this)
+        });
+        this.searcher = new WorldSearcher(this.objects)
+      }
+      mapWorldPosToCanvasCoordinate(pos, canvasWidth, canvasHeight) {
+        return new CanvasCoordinate(pos.x, pos.y)
+      }
+      draw(ctx, canvasWidth, canvasHeight) {
+        this.clear(ctx, canvasWidth, canvasHeight)
+        this.objects.forEach(object => {
+          const canvasCoordinate = this.mapWorldPosToCanvasCoordinate(object.pos, canvasWidth, canvasHeight)
+          object.draw(ctx, canvasCoordinate)
+        });
+      }
+      clear(ctx, canvasWidth, canvasHeight) {
+        ctx.fillStyle = '#82eaff'
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+      }
+    }
+
+    class CanvasCoordinate {
+      constructor(x, y) {
+        this.x = x
+        this.y = y
+      }
+    }
+
+    class WorldPos {
+      constructor(x, y) {
+        this.x = x
+        this.y = y
+      }
+      static distanse(pos1, pos2) {
+        return Math.hypot(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y))
+      }
+    }
+
+    class Object {
+      constructor(pos) {
+        this.pos = pos
+      }
+      draw(ctx, canvasCoordinate) {
+      }
+      move(world) {
+      }
+    }
+
+    class Food extends Object {
+      draw(ctx, canvasCoordinate) {
+        ctx.beginPath();
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 5, 0, 2 * Math.PI, false);
+        ctx.fillStyle = '#fffa04';
+        ctx.fill();
+      }
+      move(world) {
+      }
+    }
+
+    class Cell extends Object {
+      constructor(pos, moveDistance = 5) {
+        super(pos)
+        this.moveDistance = moveDistance
+      }
+      move(world) {
+        const closestFood = this.findClosestFood(world)
+        const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
+        this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood, [1, 0])
+        this.pos.y = this.pos.y + this.moveDistance * -this.sin(vectorToClosestFood, [1, 0])
+      }
+      cos(vector1, vector2) {
+        const ax = vector1[0]
+        const ay = vector1[1]
+        const bx = vector2[0]
+        const by = vector2[1]
+        return (ax * bx + ay * by) / (Math.sqrt(ax ** 2 + ay ** 2) * Math.sqrt(bx ** 2 + by ** 2))
+      }
+      sin(vector1, vector2) {
+        const cos = this.cos(vector1, vector2)
+        return Math.sqrt(1 - cos ** 2)
+      }
+    }
+
+    class HerbivoreCell extends Cell {
+      findClosestFood(world) {
+        return world.searcher.findClosest(this.pos, object => object instanceof Food)
+      }
+      draw(ctx, canvasCoordinate) {
+        ctx.beginPath();
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false);
+        ctx.fillStyle = '#4bc000';
+        ctx.fill();
+      }
+    }
+
+    class CarnivorousCell extends Cell {
+      findClosestFood(world) {
+        return world.searcher.findClosest(this.pos, object => object instanceof Cell)
+      }
+      draw(ctx, canvasCoordinate) {
+        ctx.beginPath();
+        ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 10, 0, 2 * Math.PI, false);
+        ctx.fillStyle = '#ff8125';
+        ctx.fill();
+      }
+    }
+
+    class WorldObjectGenerator {
+      constructor(width, height) {
+        this.numberOfCells = 1
+        this.numberOfFood = 1
+        this.killerCellProbability = 0.1
+        this.width = width
+        this.height = height
+      }
+      generate() {
+        const objects = []
+        for (let i = 0; i < this.numberOfCells; i++) {
+          const pos = new WorldPos(Math.random() * this.width, Math.random() * this.height)
+          if (Math.random() < this.killerCellProbability) {
+            objects.push(new CarnivorousCell(pos))
+          } else {
+            objects.push(new HerbivoreCell(pos))
+          }
+        }
+        for (let i = 0; i < this.numberOfFood; i++) {
+          const pos = new WorldPos(Math.random() * this.width, Math.random() * this.height)
+          objects.push(new Food(pos))
+        }
+        return objects
+      }
+    }
+
+    class Game {
+      constructor() {
+        this.updateInterval = 20
+        this.canvas = document.getElementById('game')
+        this.canvas.width = window.innerWidth
+        this.canvas.height = window.innerHeight
+        this.ctx = this.canvas.getContext('2d')
+        const worldObjectGenerator = new WorldObjectGenerator(this.canvas.width, this.canvas.height)
+        this.world = new World(
+          this.canvas.width,
+          this.canvas.height,
+          worldObjectGenerator.generate()
+        )
+      }
+
+      start() {
+        setInterval(() => {
+          this.world.update()
+          this.world.draw(this.ctx, this.canvas.width, this.canvas.height)
+        }, this.updateInterval)
+      }
+
+    }
+
+    const game = new Game()
+    game.start()
+  </script>
+</body>
+
+</html>
