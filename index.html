@@ -268,7 +268,7 @@
 
     class CarnivorousCell extends Cell {
       findClosestFood(world) {
-        return world.searcher.findClosest(this.pos, object => object != this && object instanceof Cell)
+        return world.searcher.findClosest(this.pos, object => object != this && object instanceof HerbivoreCell)
       }
       canEat(object) {
         return object != this && object instanceof Cell
@@ -290,8 +290,8 @@
 
     class WorldObjectGenerator {
       constructor(width, height) {
-        this.numberOfCells = 50
-        this.numberOfFood = 100
+        this.numberOfCells = 100
+        this.numberOfFood = 200
         this.killerCellProbability = 0.1
         this.width = width
         this.height = height
