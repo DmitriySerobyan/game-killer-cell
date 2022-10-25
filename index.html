@@ -140,6 +140,12 @@
             this.objects = this.objects.filter(it => it.isAlive)
           }
         }
+        const progeny = this.objects
+          .filter(it => it instanceof Cell)
+          .flatMap(it => it.multiply())
+        for (let newCell of progeny) {
+          this.objects.push(newCell)
+        }
         for (let event of worldEvents) {
           const handler = this.worldSpawnEventHandlers[event.constructor.name]
           handler.handle(this, event)
@@ -174,6 +180,10 @@
     }
 
     class Food extends WorldObject {
+      constructor(pos, isAlive = true, satiety = 1) {
+        super(pos, isAlive)
+        this.satiety = satiety
+      }
       move(world) {
       }
     }
@@ -188,16 +198,20 @@
     }
 
     class Cell extends WorldObject {
-      constructor(pos, moveDistance = 5, satiety = 1) {
+      constructor(pos, satiety = 1, moveDistance = 2) {
         super(pos)
+        this.satiety = satiety
         this.moveDistance = moveDistance
       }
       move(world) {
         const closestFood = this.findClosestFood(world)?.object
         if (closestFood) {
           const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
-          this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood)
-          this.pos.y = this.pos.y + this.moveDistance * this.sin(vectorToClosestFood)
+          this.pos.x += this.moveDistance * this.cos(vectorToClosestFood)
+          this.pos.y += this.moveDistance * this.sin(vectorToClosestFood)
+        } else {
+          this.pos.x += Math.random() * ((Math.random() < 0.5) ? -1 : 1)
+          this.pos.y += Math.random() * ((Math.random() < 0.5) ? -1 : 1)
         }
       }
       cos(vector) {
@@ -216,7 +230,17 @@
       }
       eat(object) {
         object.isAlive = false
-        return this.satiety += object.satiety
+        this.satiety += object.satiety
+      }
+      multiply() {
+        const progeny = []
+        if (this.satiety > 2) {
+          while (this.satiety > 2) {
+            progeny.push(this.giveBirthToChild())
+            this.satiety--
+          }
+        }
+        return progeny
       }
     }
 
@@ -226,6 +250,10 @@
       }
       canEat(object) {
         return object instanceof Food
+      }
+      giveBirthToChild() {
+        const pos = new WorldPos(this.pos.x + Math.random() * ((Math.random() < 0.5) ? -1 : 1), this.pos.y + Math.random() * ((Math.random() < 0.5) ? -1 : 1))
+        return new HerbivoreCell(pos)
       }
     }
 
@@ -244,6 +272,10 @@
       }
       canEat(object) {
         return object != this && object instanceof Cell
+      }
+      giveBirthToChild() {
+        const pos = new WorldPos(this.pos.x + Math.random() * ((Math.random() < 0.5) ? -1 : 1), this.pos.y + Math.random() * ((Math.random() < 0.5) ? -1 : 1))
+        return new CarnivorousCell(pos)
       }
     }
 
