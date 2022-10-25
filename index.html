@@ -28,15 +28,18 @@
       constructor(objects) {
         this.objects = objects
       }
-      findClosest(pos, filter) {
+      findClosest(pos, prefilter) {
         return this.objects
-          .filter(object => filter(object))
+          .filter(object => prefilter(object))
           .reduce(
             (closest, object) => {
-              if (closest == null) {
-                return object
-              }
               const objectDistance = WorldPos.distanse(object.pos, pos)
+              if (closest == null) {
+                return {
+                  'distance': objectDistance,
+                  'object': object
+                }
+              }
               if (objectDistance < closest.distance) {
                 return {
                   'distance': objectDistance,
@@ -48,20 +51,36 @@
             null
           )
       }
+      findAllAtDistance(pos, distance, prefilter) {
+        return this.objects
+          .filter(object => prefilter(object))
+          .filter(object => {
+            const objectDistance = WorldPos.distanse(object.pos, pos)
+            return objectDistance < distance
+          })
+      }
     }
 
     class World {
-      constructor(width = 100, height = 100, objects) {
+      constructor(width, height, objects) {
         this.objects = objects
         this.searcher = new WorldSearcher(objects)
         this.width = width
         this.height = height
       }
       update() {
+        this.searcher = new WorldSearcher(this.objects)
         this.objects.forEach(object => {
           object.move(this)
-        });
-        this.searcher = new WorldSearcher(this.objects)
+        })
+        const constnumberOfObjects = this.objects.length
+        for (let i = 0; i < constnumberOfObjects; i++) {
+          const object = this.objects[i]
+          if (object != null) {
+            var cellsToEat = this.searcher.findAllAtDistance(object.pos, 5, (it) => object.canEat(it))
+            this.objects = this.objects.filter(it => !cellsToEat.includes(it))
+          }
+        }
       }
       mapWorldPosToCanvasCoordinate(pos, canvasWidth, canvasHeight) {
         return new CanvasCoordinate(pos.x, canvasHeight - pos.y)
@@ -104,6 +123,8 @@
       }
       move(world) {
       }
+      canEat(object) {
+      }
     }
 
     class Food extends Object {
@@ -115,6 +136,9 @@
       }
       move(world) {
       }
+      canEat(object) {
+        return false
+      }
     }
 
     class Cell extends Object {
@@ -123,10 +147,12 @@
         this.moveDistance = moveDistance
       }
       move(world) {
-        const closestFood = this.findClosestFood(world)
-        const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
-        this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood)
-        this.pos.y = this.pos.y + this.moveDistance * this.sin(vectorToClosestFood)
+        const closestFood = this.findClosestFood(world)?.object
+        if (closestFood != null) {
+          const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
+          this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood)
+          this.pos.y = this.pos.y + this.moveDistance * this.sin(vectorToClosestFood)
+        }
       }
       cos(vector) {
         const ax = vector[0]
@@ -154,6 +180,9 @@
         ctx.fillStyle = '#4bc000';
         ctx.fill();
       }
+      canEat(object) {
+        return object instanceof Food
+      }
     }
 
     class CarnivorousCell extends Cell {
@@ -166,13 +195,16 @@
         ctx.fillStyle = '#ff8125';
         ctx.fill();
       }
+      canEat(object) {
+        return object != this && object instanceof Cell
+      }
     }
 
     class WorldObjectGenerator {
       constructor(width, height) {
-        this.numberOfCells = 1
-        this.numberOfFood = 1
-        this.killerCellProbability = 0.1
+        this.numberOfCells = 50
+        this.numberOfFood = 100
+        this.killerCellProbability = 0.5
         this.width = width
         this.height = height
       }
