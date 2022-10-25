@@ -61,6 +61,28 @@
       }
     }
 
+    class WorldDrawer {
+      constructor(ctx, canvasWidth, canvasHeight) {
+        this.ctx = ctx
+        this.canvasWidth = canvasWidth
+        this.canvasHeight = canvasHeight
+      }
+      draw(world) {
+        this.clear()
+        world.objects.forEach(object => {
+          const canvasCoordinate = this.mapWorldPosToCanvasCoordinate(object.pos)
+          object.draw(this.ctx, canvasCoordinate)
+        })
+      }
+      clear() {
+        this.ctx.fillStyle = '#82eaff'
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight)
+      }
+      mapWorldPosToCanvasCoordinate(pos) {
+        return new CanvasCoordinate(pos.x, this.canvasHeight - pos.y)
+      }
+    }
+
     class World {
       constructor(width, height, objects) {
         this.objects = objects
@@ -71,30 +93,15 @@
       update() {
         this.searcher = new WorldSearcher(this.objects)
         this.objects.forEach(object => {
-          object.move(this)
+          object.update(this)
         })
-        const constnumberOfObjects = this.objects.length
-        for (let i = 0; i < constnumberOfObjects; i++) {
+        for (let i = 0; i < this.objects.length; i++) {
           const object = this.objects[i]
           if (object != null) {
             var cellsToEat = this.searcher.findAllAtDistance(object.pos, 5, (it) => object.canEat(it))
             this.objects = this.objects.filter(it => !cellsToEat.includes(it))
           }
         }
-      }
-      mapWorldPosToCanvasCoordinate(pos, canvasWidth, canvasHeight) {
-        return new CanvasCoordinate(pos.x, canvasHeight - pos.y)
-      }
-      draw(ctx, canvasWidth, canvasHeight) {
-        this.clear(ctx, canvasWidth, canvasHeight)
-        this.objects.forEach(object => {
-          const canvasCoordinate = this.mapWorldPosToCanvasCoordinate(object.pos, canvasWidth, canvasHeight)
-          object.draw(ctx, canvasCoordinate)
-        });
-      }
-      clear(ctx, canvasWidth, canvasHeight) {
-        ctx.fillStyle = '#82eaff'
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight)
       }
     }
 
@@ -115,38 +122,36 @@
       }
     }
 
-    class Object {
+    class WorldObject {
       constructor(pos) {
         this.pos = pos
       }
       draw(ctx, canvasCoordinate) {
       }
-      move(world) {
-      }
-      canEat(object) {
+      update(world) {
       }
     }
 
-    class Food extends Object {
+    class Food extends WorldObject {
       draw(ctx, canvasCoordinate) {
         ctx.beginPath()
         ctx.arc(canvasCoordinate.x, canvasCoordinate.y, 5, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'yellow'
         ctx.fill()
       }
-      move(world) {
+      update(world) {
       }
       canEat(object) {
         return false
       }
     }
 
-    class Cell extends Object {
+    class Cell extends WorldObject {
       constructor(pos, moveDistance = 5) {
         super(pos)
         this.moveDistance = moveDistance
       }
-      move(world) {
+      update(world) {
         const closestFood = this.findClosestFood(world)?.object
         if (closestFood != null) {
           const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
@@ -228,23 +233,24 @@
 
     class Game {
       constructor() {
-        this.updateInterval = 20
-        this.canvas = document.getElementById('game')
-        this.canvas.width = window.innerWidth
-        this.canvas.height = window.innerHeight
-        this.ctx = this.canvas.getContext('2d')
-        const worldObjectGenerator = new WorldObjectGenerator(this.canvas.width, this.canvas.height)
+        this.updateInterval = 1000 / 60
+        const canvas = document.getElementById('game')
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+        const ctx = canvas.getContext('2d')
+        const worldObjectGenerator = new WorldObjectGenerator(canvas.width, canvas.height)
         this.world = new World(
-          this.canvas.width,
-          this.canvas.height,
+          canvas.width,
+          canvas.height,
           worldObjectGenerator.generate()
         )
+        this.worldDrawer = new WorldDrawer(ctx, canvas.width, canvas.height)
       }
 
       start() {
         setInterval(() => {
           this.world.update()
-          this.world.draw(this.ctx, this.canvas.width, this.canvas.height)
+          this.worldDrawer.draw(this.world)
         }, this.updateInterval)
       }
 
