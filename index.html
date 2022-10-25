@@ -97,9 +97,10 @@
         })
         for (let i = 0; i < this.objects.length; i++) {
           const object = this.objects[i]
-          if (object != null) {
-            var cellsToEat = this.searcher.findAllAtDistance(object.pos, 5, (it) => object.canEat(it))
-            this.objects = this.objects.filter(it => !cellsToEat.includes(it))
+          if (object && object instanceof Cell) {
+            const cell = object
+            var eatenCells = this.searcher.findAllAtDistance(object.pos, 5, (it) => cell.canEat(it))
+            this.objects = this.objects.filter(it => !eatenCells.includes(it))
           }
         }
       }
@@ -141,9 +142,6 @@
       }
       update(world) {
       }
-      canEat(object) {
-        return false
-      }
     }
 
     class Cell extends WorldObject {
@@ -153,7 +151,7 @@
       }
       update(world) {
         const closestFood = this.findClosestFood(world)?.object
-        if (closestFood != null) {
+        if (closestFood) {
           const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
           this.pos.x = this.pos.x + this.moveDistance * this.cos(vectorToClosestFood)
           this.pos.y = this.pos.y + this.moveDistance * this.sin(vectorToClosestFood)
