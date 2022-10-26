@@ -25,9 +25,11 @@
   <script>
 
     class WorldSearcher {
+      // build index
       constructor(world) {
         this.world = world
       }
+      // use index
       findClosest(pos, prefilter) {
         return this.world.objects
           .filter(object => prefilter(object))
@@ -36,14 +38,14 @@
               const objectDistance = WorldPos.distanse(object.pos, pos)
               if (closest == null) {
                 return {
-                  'distance': objectDistance,
-                  'object': object
+                  distance: objectDistance,
+                  object: object
                 }
               }
               if (objectDistance < closest.distance) {
                 return {
-                  'distance': objectDistance,
-                  'object': object
+                  distance: objectDistance,
+                  object: object
                 }
               }
               return closest;
@@ -51,6 +53,7 @@
             null
           )
       }
+      // use index
       findAllAtDistance(pos, distance, prefilter) {
         return this.world.objects
           .filter(object => prefilter(object))
@@ -117,10 +120,11 @@
     }
 
     class World {
-      constructor(width, height, objects) {
+      constructor(width, height, objects, foodLimit = 300) {
         this.objects = objects
         this.width = width
         this.height = height
+        this.foodLimit = foodLimit
         this.worldSpawnEventHandlers = {}
         this.worldSpawnEventHandlers[WorldFoodSpawnEvent.name] = new WorldFoodSpawnEventHandler()
       }
@@ -145,6 +149,13 @@
           .flatMap(it => it.multiply())
         for (let newCell of progeny) {
           this.objects.push(newCell)
+        }
+        const foodShortage = this.foodLimit - this.objects.filter(it => it instanceof Food).length
+        if (foodShortage > 0) {
+          for (let i = 0; i < foodShortage; i++) {
+            const pos = new WorldPos(Math.random() * this.width, Math.random() * this.height)
+            worldEvents.push(new WorldFoodSpawnEvent(pos))
+          }
         }
         for (let event of worldEvents) {
           const handler = this.worldSpawnEventHandlers[event.constructor.name]
@@ -205,13 +216,23 @@
       }
       move(world) {
         const closestFood = this.findClosestFood(world)?.object
+        let deltaX
+        let deltaY
         if (closestFood) {
           const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
-          this.pos.x += this.moveDistance * this.cos(vectorToClosestFood)
-          this.pos.y += this.moveDistance * this.sin(vectorToClosestFood)
+          deltaX = this.moveDistance * this.cos(vectorToClosestFood)
+          deltaY = this.moveDistance * this.sin(vectorToClosestFood)
         } else {
-          this.pos.x += Math.random() * ((Math.random() < 0.5) ? -1 : 1)
-          this.pos.y += Math.random() * ((Math.random() < 0.5) ? -1 : 1)
+          deltaX = Math.random() * ((Math.random() < 0.5) ? -1 : 1)
+          deltaY = Math.random() * ((Math.random() < 0.5) ? -1 : 1)
+        }
+        this.pos.x += deltaX
+        this.pos.y += deltaY
+        const distanceTraveled = Math.hypot(deltaX, deltaY)
+        const satietyDecrease = ((this.satiety > 1) ? Math.log(this.satiety) : 1) * distanceTraveled * 0.001 + distanceTraveled * 0.001 + 0.001
+        this.satiety -= satietyDecrease
+        if (this.satiety < 0) {
+          this.isAlive = false
         }
       }
       cos(vector) {
@@ -234,11 +255,10 @@
       }
       multiply() {
         const progeny = []
-        if (this.satiety > 2) {
-          while (this.satiety > 2) {
-            progeny.push(this.giveBirthToChild())
-            this.satiety--
-          }
+        while (this.satiety > 2) {
+          const child = this.giveBirthToChild()
+          progeny.push(child)
+          this.satiety -= child.satiety
         }
         return progeny
       }
@@ -260,7 +280,8 @@
     class HerbivoreCellDrawer extends WorldObjectDrawer {
       draw(object, ctx, coordinate) {
         ctx.beginPath()
-        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
+        const richness =  ((object.satiety > 1) ? Math.log2(object.satiety) : 0)
+        ctx.arc(coordinate.x, coordinate.y, richness + 10, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'green'
         ctx.fill()
       }
@@ -282,7 +303,8 @@
     class CarnivorousCellDrawer extends WorldObjectDrawer {
       draw(object, ctx, coordinate) {
         ctx.beginPath()
-        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
+        const richness = Math.log2(object.satiety) * 10
+        ctx.arc(coordinate.x, coordinate.y, richness + 10, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'red'
         ctx.fill()
       }
