@@ -280,8 +280,7 @@
     class HerbivoreCellDrawer extends WorldObjectDrawer {
       draw(object, ctx, coordinate) {
         ctx.beginPath()
-        const richness =  ((object.satiety > 1) ? Math.log2(object.satiety) : 0)
-        ctx.arc(coordinate.x, coordinate.y, richness + 10, 0, 2 * Math.PI, false)
+        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'green'
         ctx.fill()
       }
@@ -303,8 +302,7 @@
     class CarnivorousCellDrawer extends WorldObjectDrawer {
       draw(object, ctx, coordinate) {
         ctx.beginPath()
-        const richness = Math.log2(object.satiety) * 10
-        ctx.arc(coordinate.x, coordinate.y, richness + 10, 0, 2 * Math.PI, false)
+        ctx.arc(coordinate.x, coordinate.y, 10, 0, 2 * Math.PI, false)
         ctx.fillStyle = 'red'
         ctx.fill()
       }
