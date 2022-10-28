@@ -131,7 +131,7 @@
       update(worldEvents) {
         this.searcher = new WorldSearcher(this)
         this.objects.forEach(object => {
-          object.move(this)
+          object.update(this)
         })
         for (let i = 0; i < this.objects.length; i++) {
           const object = this.objects[i]
@@ -179,6 +179,26 @@
       static distanse(pos1, pos2) {
         return Math.hypot(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y))
       }
+      static move(fromPos, toPos, distance) {
+        const vector = [toPos.x - fromPos.x, toPos.y - fromPos.y]
+        const deltaX = distance * WorldPos.cos(vector)
+        const deltaY = distance * WorldPos.sin(vector)
+        return new WorldPos(fromPos.x + deltaX, fromPos.y + deltaY)
+      }
+      static cos(vector) {
+        const ax = vector[0]
+        const ay = vector[1]
+        const bx = 1
+        const by = 0
+        return (ax * bx + ay * by) / (Math.sqrt(ax ** 2 + ay ** 2) * Math.sqrt(bx ** 2 + by ** 2))
+      }
+      static sin(vector) {
+        const cos = WorldPos.cos(vector)
+        if (vector[1] < 0) {
+          return -Math.sqrt(1 - cos ** 2)
+        }
+        return Math.sqrt(1 - cos ** 2)
+      }
     }
 
     class WorldObject {
@@ -186,7 +206,7 @@
         this.pos = pos
         this.isAlive = isAlive
       }
-      move(world) {
+      update(world) {
       }
     }
 
@@ -194,8 +214,6 @@
       constructor(pos, isAlive = true, satiety = 1) {
         super(pos, isAlive)
         this.satiety = satiety
-      }
-      move(world) {
       }
     }
 
@@ -214,25 +232,15 @@
         this.satiety = satiety
         this.moveDistance = moveDistance
       }
-      move(world) {
+      update(world) {
         const closestFood = this.findClosestFood(world)?.object
-        let deltaX
-        let deltaY
         if (closestFood) {
-          const vectorToClosestFood = [closestFood.pos.x - this.pos.x, closestFood.pos.y - this.pos.y]
-          deltaX = this.moveDistance * this.cos(vectorToClosestFood)
-          deltaY = this.moveDistance * this.sin(vectorToClosestFood)
-        } else {
-          deltaX = Math.random() * ((Math.random() < 0.5) ? -1 : 1)
-          deltaY = Math.random() * ((Math.random() < 0.5) ? -1 : 1)
-        }
-        this.pos.x += deltaX
-        this.pos.y += deltaY
-        const distanceTraveled = Math.hypot(deltaX, deltaY)
-        const satietyDecrease = ((this.satiety > 1) ? Math.log(this.satiety) : 1) * distanceTraveled * 0.001 + distanceTraveled * 0.001 + 0.001
-        this.satiety -= satietyDecrease
-        if (this.satiety < 0) {
-          this.isAlive = false
+          this.pos = WorldPos.move(this.pos, closestFood.pos, this.moveDistance)
+          const satietyDecrease = ((this.satiety > 1) ? Math.log(this.satiety) : 1) * this.moveDistance * 0.001 + this.moveDistance * 0.001 + 0.001
+          this.satiety -= satietyDecrease
+          if (this.satiety < 0) {
+            this.isAlive = false
+          }
         }
       }
       cos(vector) {
