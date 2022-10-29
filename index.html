@@ -132,18 +132,15 @@
         this.searcher = new WorldSearcher(this)
         this.objects.forEach(object => {
           object.update(this)
-        })
-        for (let i = 0; i < this.objects.length; i++) {
-          const object = this.objects[i]
-          if (object && object instanceof Cell) {
+          if (object instanceof Cell) {
             const cell = object
             var objectsCanEat = this.searcher.findAllAtDistance(object.pos, 5, (it) => cell.canEat(it))
             for (let objectCanEat of objectsCanEat) {
               cell.eat(objectCanEat)
             }
-            this.objects = this.objects.filter(it => it.isAlive)
           }
-        }
+        })
+        this.objects = this.objects.filter(it => it.isAlive)
         const progeny = this.objects
           .filter(it => it instanceof Cell)
           .flatMap(it => it.multiply())
